@@ -6,30 +6,25 @@ import Grid from '@mui/material/Grid'
 import Card from '@mui/material/Card'
 import {styled} from '@mui/material/styles'
 import Typography from '@mui/material/Typography'
-import CardHeader from '@mui/material/CardHeader'
+
+// ** Icon Imports
+import Icon from 'src/@core/components/icon'
 
 // ** Custom Components Imports
 import PageHeader from 'src/@core/components/page-header'
 
-import {Box, Button, CardContent, Divider, MenuItem, Paper, SelectChangeEvent, Table, TableBody, TableCell, TableContainer, TableHead, TableRow} from '@mui/material'
-import {ChangeEvent, useState} from 'react'
+import {Box, Button, CardContent, Collapse, Divider, IconButton, MenuItem, Paper, SelectChangeEvent, Table, TableBody, TableCell, TableContainer, TableHead, TableRow} from '@mui/material'
+import React, {ChangeEvent, useState} from 'react'
+import {dashboardSampleV0_4MealDetailData} from './sampledata_meal_detail'
+import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown';
+import KeyboardArrowUpIcon from '@mui/icons-material/KeyboardArrowUp';
+import {utils, writeFile} from 'xlsx'
+import * as XLSX from "xlsx";
 
 const LinkStyled = styled(Link)(({theme}) => ({
   textDecoration: 'none',
   color: theme.palette.primary.main
 }))
-
-const ITEM_HEIGHT = 48
-const ITEM_PADDING_TOP = 8
-const MenuProps = {
-  PaperProps: {
-    style: {
-      width: 250,
-      maxHeight: ITEM_HEIGHT * 4.5 + ITEM_PADDING_TOP
-    }
-  }
-}
-
 
 const createData = (code: string, totalRoom: number, roomRevenue: string, FB: string) => {
   return {code, totalRoom, roomRevenue, FB}
@@ -50,81 +45,487 @@ const rows = [
   createData('SR02', 356, formattedNumber(125535.56), formattedNumber(240522.55))
 ]
 
+const formatMoney = (money: number) => {
+  return money.toString().replace(/(\d)(?=(\d{3})+(?!\d))/g, '$1,')
+}
+const formatPercentage = (percen: number) => {
+  return percen.toString() + "%"
+}
+
+const Row = (props: any) => {
+  const {row} = props;
+  const [open, setOpen] = useState(false);
+  const [open2, setOpen2] = useState(false);
+  const [openBreak, setOpenBreak] = useState(false);
+  const [openLunch, setOpenLunch] = useState(false);
+  const [openDinner, setOpenDinner] = useState(false);
+  const [objBreak, setObjBreak] = useState<any>([]);
+  const [objLunch, setObjLunch] = useState<any>([]);
+  const [objDinner, setObjDinner] = useState<any>([]);
+
+  return (
+    <React.Fragment>
+      <TableRow>
+        <TableCell width={'50px'}>
+          <IconButton
+            aria-label="expand row"
+            size="small"
+            onClick={() => {
+              setOpen(!open)
+              if (open === false) {
+                setOpen2(false)
+                setOpenBreak(false)
+                setOpenLunch(false)
+                setOpenDinner(false)
+              }
+            }}
+          >
+            {open ? <KeyboardArrowUpIcon /> : <KeyboardArrowDownIcon />}
+          </IconButton>
+        </TableCell>
+        <TableCell width={'120px'}>
+          {row.report_date}
+        </TableCell>
+        <TableCell width={'100px'} />
+        <TableCell width={'100px'} />
+        <TableCell width={'100px'} align='center'>{row.total.adults_actual.count}</TableCell>
+        <TableCell width={'100px'} align='center'>{row.total.children_actual.count}</TableCell>
+        <TableCell width={'100px'} align='center'>{formatMoney(row.total.adults_actual.sales)}</TableCell>
+        <TableCell width={'100px'} align='center'>{row.total.children_actual.sales}</TableCell>
+        <TableCell width={'100px'} align='center'>{row.total.total_actual.count}</TableCell>
+        <TableCell width={'100px'} align='center'>{formatPercentage(row.total.total_actual.percentage_count)}</TableCell>
+        <TableCell width={'100px'} align='center'>{formatMoney(row.total.total_actual.sales)}</TableCell>
+        <TableCell width={'100px'} align='center'>{formatPercentage(row.total.total_actual.percentage_sales)}</TableCell>
+      </TableRow>
+      {
+        row.outlet.map((item: any, index: any) => {
+
+
+          return (
+            <React.Fragment key={index}>
+              <TableRow >
+                <TableCell colSpan={12} style={{padding: '0'}}>
+                  <Collapse in={open} timeout="auto" unmountOnExit>
+                    <Table>
+                      <TableBody>
+                        <TableRow>
+                          <TableCell width={'50px'} />
+                          <TableCell width={'120px'} align='center'>
+                            <IconButton
+                              aria-label="expand row"
+                              size="small"
+                              onClick={() => {
+                                setOpen2(!open2)
+                                if (open2 === false) {
+                                  setOpenBreak(false)
+                                  setOpenLunch(false)
+                                  setOpenDinner(false)
+                                }
+                                const objArrayBreak: any = [];
+                                Object.keys(item.breakfast.records).forEach(key => objArrayBreak.push({
+                                  time: key,
+                                  record: item.breakfast.records[key]
+                                }))
+                                setObjBreak(objArrayBreak)
+                                const objArrayLunch: any = [];
+                                Object.keys(item.lunch.records).forEach(key => objArrayLunch.push({
+                                  time: key,
+                                  record: item.lunch.records[key]
+                                }))
+                                setObjLunch(objArrayLunch)
+
+                                const objArrayDinner: any = [];
+                                Object.keys(item.dinner.records).forEach(key => objArrayDinner.push({
+                                  time: key,
+                                  record: item.dinner.records[key]
+                                }))
+                                setObjDinner(objArrayDinner)
+                              }}
+                            >
+                              {open2 ? <KeyboardArrowUpIcon /> : <KeyboardArrowDownIcon />}
+                            </IconButton>
+                          </TableCell>
+                          <TableCell width={'100px'} align='center'>{item.outlet_code}</TableCell>
+                          <TableCell width={'100px'} />
+                          <TableCell width={'100px'} align='center'>{item.total.adults_actual.count}</TableCell>
+                          <TableCell width={'100px'} align='center'>{item.total.children_actual.count}</TableCell>
+                          <TableCell width={'100px'} align='center'>{formatMoney(item.total.adults_actual.sales)}</TableCell>
+                          <TableCell width={'100px'} align='center'>{item.total.children_actual.sales}</TableCell>
+                          <TableCell width={'100px'} align='center'>{item.total.total_actual.count}</TableCell>
+                          <TableCell width={'100px'} align='center'>{formatPercentage(item.total.total_actual.percentage_count)}</TableCell>
+                          <TableCell width={'100px'} align='center'>{formatMoney(item.total.total_actual.sales)}</TableCell>
+                          <TableCell width={'100px'} align='center'>{formatPercentage(item.total.total_actual.percentage_sales)}</TableCell>
+                        </TableRow>
+                      </TableBody>
+                    </Table>
+                  </Collapse>
+                </TableCell>
+              </TableRow>
+
+
+              <TableRow>
+                <TableCell colSpan={12} style={{padding: '0'}}>
+                  <Collapse in={open2 && open} timeout="auto" unmountOnExit>
+                    <Table>
+                      <TableBody>
+                        <TableRow>
+                          <TableCell width={'50px'} />
+                          <TableCell width={'110px'} />
+                          <TableCell width={'110px'} align='center'>
+                            <IconButton
+                              aria-label="expand row"
+                              size="small"
+                              onClick={() => setOpenBreak(!openBreak)}
+                            >
+                              {openBreak ? <KeyboardArrowUpIcon /> : <KeyboardArrowDownIcon />}
+                            </IconButton>
+                          </TableCell>
+                          <TableCell width={'100px'} align='center'>Breakfast</TableCell>
+                          <TableCell width={'100px'} align='center'>{item.breakfast.total.adults_actual.count}</TableCell>
+                          <TableCell width={'100px'} align='center'>{item.breakfast.total.children_actual.count}</TableCell>
+                          <TableCell width={'100px'} align='center'>{formatMoney(item.breakfast.total.adults_actual.sales)}</TableCell>
+                          <TableCell width={'100px'} align='center'>{item.breakfast.total.children_actual.sales}</TableCell>
+                          <TableCell width={'100px'} align='center'>{item.breakfast.total.total_actual.count}</TableCell>
+                          <TableCell width={'100px'} align='center'>{formatPercentage(item.breakfast.total.total_actual.percentage_count)}</TableCell>
+                          <TableCell width={'100px'} align='center'>{formatMoney(item.breakfast.total.total_actual.sales)}</TableCell>
+                          <TableCell width={'100px'} align='center'>{formatPercentage(item.breakfast.total.total_actual.percentage_sales)}</TableCell>
+                        </TableRow>
+                        {
+                          <TableRow key={index}>
+                            <TableCell align='right' colSpan={12} style={{padding: '0'}}>
+                              <Collapse in={openBreak && open && open2} timeout="auto" unmountOnExit>
+                                <Table>
+                                  <TableHead sx={{background: '#00CFE8'}}>
+                                    <TableRow>
+                                      <TableCell />
+                                      <TableCell />
+                                      <TableCell />
+
+                                      <TableCell align='center' sx={{textTransform: 'none'}}>Room</TableCell>
+                                      <TableCell align='center' sx={{textTransform: 'none'}}>Guest Names</TableCell>
+                                      <TableCell align='center' sx={{textTransform: 'none'}}>Count</TableCell>
+                                      <TableCell align='center' sx={{textTransform: 'none'}}>Pax</TableCell>
+                                      <TableCell align='center' sx={{textTransform: 'none'}}>Time</TableCell>
+                                      <TableCell align='center' sx={{textTransform: 'none'}}>Pkg.Code</TableCell>
+                                      <TableCell align='center' sx={{textTransform: 'none'}}>Remark</TableCell>
+                                    </TableRow>
+                                  </TableHead>
+                                  <TableBody>
+                                    {
+                                      objBreak.map((data: any, inB: any) => {
+                                        return (
+                                          <TableRow key={inB}>
+                                            <TableCell />
+                                            <TableCell />
+                                            <TableCell />
+                                            <TableCell align='center'>{data.record.room}</TableCell>
+                                            <TableCell align='center'>{data.record.guest_names}</TableCell>
+                                            <TableCell align='center'>{data.record.count}</TableCell>
+                                            <TableCell align='center'>{data.record.pax}</TableCell>
+                                            <TableCell align='center'>{data.time}</TableCell>
+                                            <TableCell align='center'>{data.record.package_code}</TableCell>
+                                            <TableCell align='center'>{data.record.remark}</TableCell>
+                                          </TableRow>
+                                        )
+                                      })
+                                    }
+                                  </TableBody>
+                                </Table>
+                              </Collapse>
+                            </TableCell>
+                          </TableRow>
+                        }
+                      </TableBody>
+                    </Table>
+                  </Collapse>
+                </TableCell>
+              </TableRow>
+
+
+              <TableRow>
+                <TableCell colSpan={12} style={{padding: '0'}}>
+                  <Collapse in={open2 && open} timeout="auto" unmountOnExit>
+                    <Table>
+                      <TableBody>
+                        <TableRow>
+                          <TableCell width={'50px'} />
+                          <TableCell width={'110px'} />
+                          <TableCell width={'110px'} align='center'>
+                            <IconButton
+                              aria-label="expand row"
+                              size="small"
+                              onClick={() => setOpenLunch(!openLunch)}
+                            >
+                              {openLunch ? <KeyboardArrowUpIcon /> : <KeyboardArrowDownIcon />}
+                            </IconButton>
+                          </TableCell>
+                          <TableCell width={'100px'} align='center'>Lunch</TableCell>
+                          <TableCell width={'100px'} align='center'>{item.lunch.total.adults_actual.count}</TableCell>
+                          <TableCell width={'100px'} align='center'>{item.lunch.total.children_actual.count}</TableCell>
+                          <TableCell width={'100px'} align='center'>{formatMoney(item.lunch.total.adults_actual.sales)}</TableCell>
+                          <TableCell width={'100px'} align='center'>{item.lunch.total.children_actual.sales}</TableCell>
+                          <TableCell width={'100px'} align='center'>{item.lunch.total.total_actual.count}</TableCell>
+                          <TableCell width={'100px'} align='center'>{formatPercentage(item.lunch.total.total_actual.percentage_count)}</TableCell>
+                          <TableCell width={'100px'} align='center'>{formatMoney(item.lunch.total.total_actual.sales)}</TableCell>
+                          <TableCell width={'100px'} align='center'>{formatPercentage(item.lunch.total.total_actual.percentage_sales)}</TableCell>
+                        </TableRow>
+                        {
+                          <TableRow key={index}>
+                            <TableCell align='right' colSpan={12} style={{padding: '0'}}>
+                              <Collapse in={openLunch && open && open2} timeout="auto" unmountOnExit>
+                                <Table>
+                                  <TableHead sx={{background: '#00CFE8'}}>
+                                    <TableRow>
+                                      <TableCell />
+                                      <TableCell />
+                                      <TableCell />
+
+                                      <TableCell align='center' sx={{textTransform: 'none'}}>Room</TableCell>
+                                      <TableCell align='center' sx={{textTransform: 'none'}}>Guest Names</TableCell>
+                                      <TableCell align='center' sx={{textTransform: 'none'}}>Count</TableCell>
+                                      <TableCell align='center' sx={{textTransform: 'none'}}>Pax</TableCell>
+                                      <TableCell align='center' sx={{textTransform: 'none'}}>Time</TableCell>
+                                      <TableCell align='center' sx={{textTransform: 'none'}}>Pkg.Code</TableCell>
+                                      <TableCell align='center' sx={{textTransform: 'none'}}>Remark</TableCell>
+                                    </TableRow>
+                                  </TableHead>
+                                  <TableBody>
+                                    {
+                                      objLunch.map((data: any, inB: any) => {
+                                        return (
+                                          <TableRow key={inB}>
+                                            <TableCell />
+                                            <TableCell />
+                                            <TableCell />
+                                            <TableCell align='center'>{data.record.room}</TableCell>
+                                            <TableCell align='center'>{data.record.guest_names}</TableCell>
+                                            <TableCell align='center'>{data.record.count}</TableCell>
+                                            <TableCell align='center'>{data.record.pax}</TableCell>
+                                            <TableCell align='center'>{data.time}</TableCell>
+                                            <TableCell align='center'>{data.record.package_code}</TableCell>
+                                            <TableCell align='center'>{data.record.remark}</TableCell>
+                                          </TableRow>
+                                        )
+                                      })
+                                    }
+                                  </TableBody>
+                                </Table>
+                              </Collapse>
+                            </TableCell>
+                          </TableRow>
+                        }
+                      </TableBody>
+                    </Table>
+                  </Collapse>
+                </TableCell>
+              </TableRow>
+
+
+              <TableRow>
+                <TableCell colSpan={12} style={{padding: '0'}}>
+                  <Collapse in={open2 && open} timeout="auto" unmountOnExit>
+                    <Table>
+                      <TableBody>
+                        <TableRow>
+                          <TableCell width={'50px'} />
+                          <TableCell width={'110px'} />
+                          <TableCell width={'110px'} align='center'>
+                            <IconButton
+                              aria-label="expand row"
+                              size="small"
+                              onClick={() => setOpenDinner(!openDinner)}
+                            >
+                              {openDinner ? <KeyboardArrowUpIcon /> : <KeyboardArrowDownIcon />}
+                            </IconButton>
+                          </TableCell>
+                          <TableCell width={'100px'} align='center'>Dinner</TableCell>
+                          <TableCell width={'100px'} align='center'>{item.dinner.total.adults_actual.count}</TableCell>
+                          <TableCell width={'100px'} align='center'>{item.dinner.total.children_actual.count}</TableCell>
+                          <TableCell width={'100px'} align='center'>{formatMoney(item.dinner.total.adults_actual.sales)}</TableCell>
+                          <TableCell width={'100px'} align='center'>{item.dinner.total.children_actual.sales}</TableCell>
+                          <TableCell width={'100px'} align='center'>{item.dinner.total.total_actual.count}</TableCell>
+                          <TableCell width={'100px'} align='center'>{formatPercentage(item.dinner.total.total_actual.percentage_count)}</TableCell>
+                          <TableCell width={'100px'} align='center'>{formatMoney(item.dinner.total.total_actual.sales)}</TableCell>
+                          <TableCell width={'100px'} align='center'>{formatPercentage(item.dinner.total.total_actual.percentage_sales)}</TableCell>
+                        </TableRow>
+                        {
+                          <TableRow key={index}>
+                            <TableCell align='right' colSpan={12} style={{padding: '0'}}>
+                              <Collapse in={openDinner && open && open2} timeout="auto" unmountOnExit>
+                                <Table>
+                                  <TableHead sx={{background: '#00CFE8'}}>
+                                    <TableRow>
+                                      <TableCell />
+                                      <TableCell />
+                                      <TableCell />
+
+                                      <TableCell align='center' sx={{textTransform: 'none'}}>Room</TableCell>
+                                      <TableCell align='center' sx={{textTransform: 'none'}}>Guest Names</TableCell>
+                                      <TableCell align='center' sx={{textTransform: 'none'}}>Count</TableCell>
+                                      <TableCell align='center' sx={{textTransform: 'none'}}>Pax</TableCell>
+                                      <TableCell align='center' sx={{textTransform: 'none'}}>Time</TableCell>
+                                      <TableCell align='center' sx={{textTransform: 'none'}}>Pkg.Code</TableCell>
+                                      <TableCell align='center' sx={{textTransform: 'none'}}>Remark</TableCell>
+                                    </TableRow>
+                                  </TableHead>
+                                  <TableBody>
+                                    {
+                                      objDinner.map((data: any, inB: any) => {
+                                        return (
+                                          <TableRow key={inB}>
+                                            <TableCell />
+                                            <TableCell />
+                                            <TableCell />
+                                            <TableCell align='center'>{data.record.room}</TableCell>
+                                            <TableCell align='center'>{data.record.guest_names}</TableCell>
+                                            <TableCell align='center'>{data.record.count}</TableCell>
+                                            <TableCell align='center'>{data.record.pax}</TableCell>
+                                            <TableCell align='center'>{data.time}</TableCell>
+                                            <TableCell align='center'>{data.record.package_code}</TableCell>
+                                            <TableCell align='center'>{data.record.remark}</TableCell>
+                                          </TableRow>
+                                        )
+                                      })
+                                    }
+                                  </TableBody>
+                                </Table>
+                              </Collapse>
+                            </TableCell>
+                          </TableRow>
+                        }
+                      </TableBody>
+                    </Table>
+                  </Collapse>
+                </TableCell>
+              </TableRow>
+
+
+            </React.Fragment>
+          )
+        })
+      }
+    </React.Fragment>
+  )
+}
+
 const PeriodDetail = () => {
   // ** State
-  const [chooseCodes, setChooseCodes] = useState<string[]>(['SPH'])
 
-  const handleChange = (event: SelectChangeEvent<unknown>) => {
-    setChooseCodes(event.target.value as string[])
+  const onGetExporProduct = (title?: string, worksheetname?: string) => {
+
+
+    const dataToExport = dashboardSampleV0_4MealDetailData.map((row: any) => ({
+      Date: row.report_date,
+      RVC: "",
+      Period: "",
+      CountAdults: row.total.adults_actual.count,
+      CountChildren: row.total.children_actual.count,
+      SalesAdults: row.total.adults_actual.sales,
+      SalesChildren: row.total.children_actual.sales,
+      Count: row.total.total_actual.count,
+      Count_Percentage: row.total.total_actual.percentage_count,
+      Sales: row.total.total_actual.sales,
+      Sales_Percentage: row.total.total_actual.percentage_sales,
+    }));
+
+    const objRVC = dashboardSampleV0_4MealDetailData.map((data: any) => {
+      return (
+        data.outlet.map((test: any) => ({
+          Date: "",
+          RVC: test.outlet_code,
+          Period: "",
+          CountAdults: test.total.adults_actual.count,
+          CountChildren: test.total.children_actual.count,
+          SalesAdults: test.total.adults_actual.sales,
+          SalesChildren: test.total.children_actual.sales,
+          Count: test.total.total_actual.count,
+          Count_Percentage: test.total.total_actual.percentage_count,
+          Sales: test.total.total_actual.sales,
+          Sales_Percentage: test.total.total_actual.percentage_sales,
+        }))
+      )
+    })
+    console.log('objRVC', objRVC);
+
+    console.log('dataToExport', dataToExport);
+
+    //Create Excel workbook and worksheet
+    const workbook = XLSX.utils.book_new();
+    const worksheet = XLSX.utils?.json_to_sheet(dataToExport);
+    XLSX.utils.book_append_sheet(workbook, worksheet, worksheetname);
+    // Save the workbook as an Excel file
+    XLSX.writeFile(workbook, `${title}.xlsx`);
+
   }
 
-  const total = (array: any) => {
-    let sum = 0;
-    for (let i = 0; i < array.length; i++) {
-      sum += array[i].totalRoom
-    }
-    return sum
-  }
-  const totalRoomRevenue = (array: any) => {
-    let sum = 0;
-    for (let i = 0; i < array.length; i++) {
-      sum += parseFloat(array[i].roomRevenue.replace(/[$,]/g, ''))
-    }
-    return formattedNumber(sum)
-  }
-  const totalFB = (array: any) => {
-    let sum = 0;
-    for (let i = 0; i < array.length; i++) {
-      sum += parseFloat(array[i].FB.replace(/[$,]/g, ''))
-    }
-    return formattedNumber(sum)
-  }
   return (
     <Grid container spacing={6}>
       <PageHeader
         title={
           <Typography variant='h4'>
             <LinkStyled href='https://mui.com/material-ui/react-table/' target='_blank'>
-              At a Glance Report
+              Period Detail
             </LinkStyled>
           </Typography>
         }
       />
       <Grid item xs={12}>
+        <Card sx={{marginBottom: '8px'}}>
+          <Box
+            sx={{
+              display: 'flex',
+              justifyContent: 'center',
+              flexDirection: 'row',
+              '& > *': {maxWidth: 500, mt: theme => `${theme.spacing(4)} !important`, mb: theme => `${theme.spacing(4)} !important`},
+              paddingLeft: '1.5rem',
+              paddingRight: '1.5rem',
+            }}
+          >
+            <Button className='btn-icon' variant='contained' color='primary' onClick={() => onGetExporProduct("PeriodDetail", "PeriodDetailExport")}>
+              <Icon icon='tabler:download' fontSize={20} />
+            </Button>
+          </Box>
+        </Card>
+        <Card sx={{marginBottom: '4px'}}>
+          <Box sx={{
+            display: 'flex',
+            justifyContent: 'center',
+            flexDirection: 'row',
+            '& > *': {maxWidth: 500, mt: theme => `${theme.spacing(2)} !important`, mb: theme => `${theme.spacing(2)} !important`},
+            paddingLeft: '1.5rem',
+            paddingRight: '1.5rem',
+            background: "#7367F0",
+          }}>
+            <Typography sx={{
+              color: 'white',
+              fontWeight: '700'
+            }}>Expected and Actual Meal Count and Sales</Typography>
+          </Box>
+        </Card>
         <Card>
           {/* <CardHeader title='Basic Table' /> */}
           <TableContainer component={Paper}>
-            <Table stickyHeader sx={{minWidth: 650}} aria-label='simple table'>
-              <TableHead>
+            <Table style={{tableLayout: "fixed"}} sx={{minWidth: 650}} aria-label='collapsible table'>
+              <TableHead sx={{background: '#00CFE8'}}>
                 <TableRow>
-                  <TableCell>Property</TableCell>
-                  <TableCell align='center'>Total Room in Hotel</TableCell>
-                  <TableCell align='center'>Room Revenue</TableCell>
-                  <TableCell align='center'>F&B Revenue</TableCell>
-                  {/* <TableCell align='right'>Protein (g)</TableCell> */}
+                  <TableCell style={{width: "50px"}} />
+                  <TableCell style={{width: "120px"}} sx={{textTransform: 'none'}}>Date</TableCell>
+                  <TableCell style={{width: "100px"}} sx={{textTransform: 'none'}} align='center'>RVC</TableCell>
+                  <TableCell style={{width: "100px"}} sx={{textTransform: 'none'}} align='center'>Period</TableCell>
+                  <TableCell style={{width: "100px"}} sx={{textTransform: 'none'}} align='center'>A. Count</TableCell>
+                  <TableCell style={{width: "100px"}} sx={{textTransform: 'none'}} align='center'>C. Count</TableCell>
+                  <TableCell style={{width: "100px"}} sx={{textTransform: 'none'}} align='center'>A. Sales</TableCell>
+                  <TableCell style={{width: "100px"}} sx={{textTransform: 'none'}} align='center'>C. Sales</TableCell>
+                  <TableCell style={{width: "100px"}} sx={{textTransform: 'none'}} align='center'>Count</TableCell>
+                  <TableCell style={{width: "100px"}} sx={{textTransform: 'none'}} align='center'>Count%</TableCell>
+                  <TableCell style={{width: "100px"}} sx={{textTransform: 'none'}} align='center'>Sales</TableCell>
+                  <TableCell style={{width: "100px"}} sx={{textTransform: 'none'}} align='center'>Sales%</TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
-                {rows.filter((el) => chooseCodes.find((code) => el.code === code)).map(row => (
-                  <TableRow
-                    key={row.code}
-                  >
-                    <TableCell component='th' scope='row'>
-                      {row.code}
-                    </TableCell>
-                    <TableCell align='center'>{row.totalRoom}</TableCell>
-                    <TableCell align='center'>{row.roomRevenue}</TableCell>
-                    <TableCell align='center'>{row.FB}</TableCell>
-                  </TableRow>
+                {dashboardSampleV0_4MealDetailData.map((row, index) => (
+                  <Row key={index} row={row} />
                 ))}
-                <TableRow sx={{background: 'gray'}}>
-                  <TableCell component='th' scope='row' sx={{fontWeight: '700'}}>
-                    Grand Total
-                  </TableCell>
-                  <TableCell align='center' sx={{fontWeight: '700'}}>{total(rows.filter((el) => chooseCodes.find((code) => el.code === code)))}</TableCell>
-                  <TableCell align='center' sx={{fontWeight: '700'}}>{totalRoomRevenue(rows.filter((el) => chooseCodes.find((code) => el.code === code)))}</TableCell>
-                  <TableCell align='center' sx={{fontWeight: '700'}}>{totalFB(rows.filter((el) => chooseCodes.find((code) => el.code === code)))}</TableCell>
-                </TableRow>
               </TableBody>
             </Table>
           </TableContainer>
