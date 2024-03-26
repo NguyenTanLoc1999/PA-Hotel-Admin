@@ -15,7 +15,7 @@ import PageHeader from 'src/@core/components/page-header'
 
 import {Box, Button, CardContent, Collapse, Divider, IconButton, MenuItem, Paper, SelectChangeEvent, Table, TableBody, TableCell, TableContainer, TableHead, TableRow} from '@mui/material'
 import React, {ChangeEvent, useState} from 'react'
-import {dashboardSampleV0_4MealDetailData} from './sampledata_meal_detail'
+import {dashboardSampleV0_4MealDetailData} from '../../../@fake-db/sampledata_meal_detail'
 import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown';
 import KeyboardArrowUpIcon from '@mui/icons-material/KeyboardArrowUp';
 import {utils, writeFile} from 'xlsx'
